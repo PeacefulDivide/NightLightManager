@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="NightLightUtility.vcxproj" Id="e71831c0-f42b-4030-a2d1-4abc29a7bf18" />
+</Solution>
