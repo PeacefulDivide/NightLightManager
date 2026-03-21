@@ -4,21 +4,29 @@
 #include "resource.h"
 #include <Windows.h>
 #include <tchar.h>
+#include <CommCtrl.h>
+
 
 #define WM_TRAYICON (WM_USER + 1)
 #define ID_TRAY_EXIT 2001
 #define ID_TRAY_SETTINGS 2002
 
-INT_PTR CALLBACK SettingsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 
 std::vector<std::wstring> excludedGames = { L"EldenRing.exe" };
 bool isGamingMode = false;
 
+// Default saturation 50%
+float g_RedIntensity = 0.5f;
+
+INT_PTR CALLBACK SettingsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+
 // Basic save function
 void SaveConfig() {
 	std::wofstream file("config.txt");
-	for (const auto& g : excludedGames) file << g << std::endl;
-
+	if (file.is_open()) {
+		file << g_RedIntensity << std::endl; // Save slider value
+		for (const auto& g : excludedGames) file << g << std::endl;
+	}
 }
 
 // Basic load function
@@ -27,6 +35,15 @@ void LoadConfig() {
 	if (file.is_open()) {
 		excludedGames.clear();
 		std::wstring line;
+
+		if (std::getline(file, line)) {
+			try {
+				g_RedIntensity = std::stof(line);
+			}
+			catch (...) {
+				g_RedIntensity = 0.5f; // Default if file corruption occurss
+			}
+		}
 		while (std::getline(file, line)) {
 			if (!line.empty()) {
 				excludedGames.push_back(line);
@@ -94,7 +111,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	// Background loop
 	MSG msg;
-	DWORD64 lastCheck = 0;
+	ULONGLONG lastCheck = 0;
+
+	NightLightManager::SetState(true, g_RedIntensity);
+
 	while (true) {
 		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
 			if (msg.message == WM_QUIT) break;
@@ -106,19 +126,23 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		if (GetTickCount64() - lastCheck > 2000) {
 			bool currentlyGaming = NightLightManager::IsGameRunning(excludedGames);
 
+			// DEBUG
 			if (currentlyGaming && !isGamingMode) {
+				OutputDebugStringW(L"Night Light Manager: Game Detected! Tint Removed\n");
 				NightLightManager::SetState(false); // turns off for game
 				isGamingMode = true;
 			}
+				
 			else if (!currentlyGaming && isGamingMode) {
-				NightLightManager::SetState(true); // Turns back on when not gaming
+				NightLightManager::SetState(true, g_RedIntensity); // Turns back on when not gaming
 				isGamingMode = false;
 			}
-			lastCheck = (DWORD)GetTickCount64();
+			lastCheck = GetTickCount64();
 		}
 		Sleep(10); // Lower CPU usage
 	}
 
+	NightLightManager::SetState(true, g_RedIntensity);
 	Shell_NotifyIcon(NIM_DELETE, &nid);
 	return 0;
 }

@@ -3,11 +3,14 @@
 #include <commdlg.h> 
 #include <vector>
 #include <string>
+#include <CommCtrl.h>
 
 #pragma comment(lib, "Comdlg32.lib")
 
 // Global list for UI to interact with
 extern std::vector<std::wstring> excludedGames;
+extern bool isGamingMode;
+extern float g_RedIntensity;
 
 // Declarations for helper functions
 void SaveConfig();
@@ -16,16 +19,36 @@ bool IsAutoStartEnabled();
 
 INT_PTR CALLBACK SettingsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
-	case WM_INITDIALOG:
+	case WM_INITDIALOG: {
+
 		// Set checkbox state in registry
 		CheckDlgButton(hDlg, IDC_CHK_STARTUP, IsAutoStartEnabled() ? BST_CHECKED : BST_UNCHECKED);
+
 		// Populate list with existing games on startup
 		SendDlgItemMessage(hDlg, IDC_GAME_LIST, LB_RESETCONTENT, 0, 0);
 		for (const auto& game : excludedGames) {
 			SendDlgItemMessage(hDlg, IDC_GAME_LIST, LB_ADDSTRING, 0, (LPARAM)game.c_str());
-
 		}
+
+		// Initialize Slider
+		SendDlgItemMessage(hDlg, IDC_RED_SLIDER, TBM_SETRANGE, TRUE, MAKELONG(0, 1000));
+		SendDlgItemMessage(hDlg, IDC_RED_SLIDER, TBM_SETPOS, TRUE, (LPARAM)(g_RedIntensity * 100));
+
 		return (INT_PTR)TRUE;
+	}
+
+	case WM_HSCROLL: {
+		if ((HWND)lParam == GetDlgItem(hDlg, IDC_RED_SLIDER)) {
+			int pos = (int)SendMessage((HWND)lParam, TBM_GETPOS, 0, 0);
+			g_RedIntensity = (float)pos / 3000.0f;
+
+			// Live preview
+			if (!isGamingMode) {
+				NightLightManager::SetState(true, g_RedIntensity);
+			}
+		}
+		break;
+	}
 
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
@@ -39,7 +62,7 @@ INT_PTR CALLBACK SettingsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 			ofn.hwndOwner = hDlg;
 			ofn.lpstrFile = szFile;
 			ofn.nMaxFile = sizeof(szFile);
-			ofn.lpstrFilter = L"Executable Files (*.exe\0*.exe\0All Files (*.*)\0*.*\0";
+			ofn.lpstrFilter = L"Executable Files (*.exe)\0*.exe\0All Files (*.*)\0*.*\0";
 			ofn.nFilterIndex = 1;
 			ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
 
@@ -57,15 +80,33 @@ INT_PTR CALLBACK SettingsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 		case IDC_BTN_ADD: {
 			wchar_t buffer[256];
 			GetDlgItemText(hDlg, IDC_GAME_INPUT, buffer, 256);
+
 			if (wcslen(buffer) > 0) {
-				excludedGames.push_back(buffer);
-				SendDlgItemMessage(hDlg, IDC_GAME_LIST, LB_ADDSTRING, 0, (LPARAM)buffer);
-				SetDlgItemText(hDlg, IDC_GAME_INPUT, L"");
-				SaveConfig();
+				bool exists = false;
+				for (const auto& game : excludedGames) {
+					if (_wcsicmp(game.c_str(), buffer) == 0) {
+						exists = true;
+						break;
+					}
+				}
+				if (!exists) {
+					excludedGames.push_back(buffer);
+					SendDlgItemMessage(hDlg, IDC_GAME_LIST, LB_ADDSTRING, 0, (LPARAM)buffer);
+					SetDlgItemText(hDlg, IDC_GAME_INPUT, L"");
+					SaveConfig();
+				}
+				else {
+					// Alert game is already in list
+					SetDlgItemText(hDlg, IDC_GAME_INPUT, L"");
+					MessageBox(hDlg, L"This game is already in exlusion list.", L"Duplicate Entry", MB_OK | MB_ICONINFORMATION);
+
+				}
+
 
 			}
 			break;
 		}
+		
 		case IDC_BTN_REMOVE: {// close button
 			int sel = (int)SendDlgItemMessage(hDlg, IDC_GAME_LIST, LB_GETCURSEL, 0, 0);
 			if (sel != LB_ERR) {
@@ -85,8 +126,10 @@ INT_PTR CALLBACK SettingsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 			SetAutoStart(isChecked);
 			break;
 		}
-
+		
+		case IDOK:
 		case IDCANCEL:
+			SaveConfig();
 			EndDialog(hDlg, LOWORD(wParam));
 			return (INT_PTR)TRUE;
 		}

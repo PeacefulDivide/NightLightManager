@@ -14,7 +14,7 @@ void SetAutoStart(bool enable) {
         if (enable) {
             wchar_t path[MAX_PATH];
             GetModuleFileNameW(NULL, path, MAX_PATH);
-            RegSetValueExW(hKey, L"NightLightManager", 0, REG_SZ, (BYTE*)path, (wcslen(path) + 1) * sizeof(wchar_t));
+            RegSetValueExW(hKey, L"NightLightManager", 0, REG_SZ, (BYTE*)path, (DWORD)((wcslen(path) + 1) * sizeof(wchar_t)));
         }
         else {
             RegDeleteValueW(hKey, L"NightLightManager");

@@ -10,6 +10,8 @@
 #define IDC_BTN_ADD                     1004
 #define IDC_CHK_STARTUP                 1005
 #define IDC_BTN_BROWSE                  1007
+#define IDC_RED_SLIDER					1008
+#define IDC_STATIC_RED					1009
 
 // Next default values for new objects
 // 

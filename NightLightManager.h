@@ -4,55 +4,83 @@
 #include <string>
 #include <Psapi.h>
 #include <fstream>
+#include <tlhelp32.h>
 
+#pragma comment(lib, "Psapi.lib")
+
+// Class for changing Gamma
 class NightLightManager {
 public:
-	// Toggles windows 11 night light registry key
-	static void SetState(bool active) {
-		HKEY hKey;
-		const wchar_t* subkey = L"Software\\Microsoft\\Windows\\CurrentVersion\\CloudStore\\Store\\DefaultNetworkConfiguration\\Cloud\\default$windows.data.bluelightreduction.settings\\Current";
+	
+	static void SetState(bool active, float redIntensity = 0.5f) {
+		// Get the Device Context for the primary monitor
+		HDC hdc = GetDC(NULL);
+		if (!hdc) return;
 
-		if (RegOpenKeyExW(HKEY_CURRENT_USER, subkey, 0, KEY_ALL_ACCESS, &hKey) == ERROR_SUCCESS) {
-			DWORD size;
-			if (RegQueryValueExW(hKey, L"Data", NULL, NULL, NULL, &size) == ERROR_SUCCESS) {
-				std::vector<BYTE> data(size);
-				if (RegQueryValueExW(hKey, L"Data", NULL, NULL, data.data(), &size) == ERROR_SUCCESS) {
-					// Byte 18: 0x15 on, 0x10 off.
-					data[18] = active ? 0x15 : 0x10;
-					RegSetValueExW(hKey, L"Data", 0, REG_BINARY, data.data(), size);
+		WORD ramp[3][256];
 
-					// Force windows to update night light
-					SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0, (LPARAM)L"Policy", SMTO_ABORTIFHUNG, 5000, NULL);
+		for (int i = 0; i < 256; i++) {
 
-				}
+			double baseValue = (double)((i << 8) | i);
+
+			if (!active) {
+				// Gaming mode no tint
+				ramp[0][i] = (WORD)baseValue;
+				ramp[1][i] = (WORD)baseValue;
+				ramp[2][i] = (WORD)baseValue;
 			}
-			RegCloseKey(hKey);
+			else {
+				// Night mode tinted
+				// 0.0 = no tint
+				// 1.0 = pure red
+
+				float gMult = 1.0f - redIntensity;
+				float bMult = (1.0f - redIntensity) * 0.8f;
+
+				ramp[0][i] = (WORD)baseValue;
+				ramp[1][i] = (WORD)(baseValue * (double)gMult);
+				ramp[2][i] = (WORD)(baseValue * (double)bMult);
+			}
 		}
-	}
+
+        // Apply the new color profile to the GPU
+        if (!SetDeviceGammaRamp(hdc, ramp)) {
+            DWORD err = GetLastError();
+            wchar_t buf[256];
+            swprintf_s(buf, L"NLM: Gamma Failed. Error Code: %lu\n", err);
+            OutputDebugStringW(buf);
+        }
+        else {
+            OutputDebugStringW(active ? L"NLM: Gamma Warmth Applied!\n" : L"NLM: Gamma Reset.\n");
+        }
+
+        ReleaseDC(NULL, hdc);
+    }
 
 	// Check if current window is in exclusion list
 	static bool IsGameRunning(const std::vector<std::wstring>& list) {
-		HWND hwnd = GetForegroundWindow();
-		if (!hwnd) return false;
+		// take snap shot of all processes
+		HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
-		DWORD pid;
-		GetWindowThreadProcessId(hwnd, &pid);
-		HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+		if (hSnap == INVALID_HANDLE_VALUE) return false;
 
-		if (hProc) {
-			wchar_t buffer[MAX_PATH];
-			if (GetModuleBaseNameW(hProc, NULL, buffer, MAX_PATH)) {
-				std::wstring currentProc = buffer;
+
+		PROCESSENTRY32W pe32;
+		pe32.dwSize = sizeof(PROCESSENTRY32W);
+
+		if (Process32FirstW(hSnap, &pe32)) {
+			do {
+				// Check every running process against list
 				for (const auto& game : list) {
-					if (_wcsicmp(currentProc.c_str(), game.c_str()) == 0) {
-						CloseHandle(hProc);
-						return true;
+					if (_wcsicmp(pe32.szExeFile, game.c_str()) == 0) {
+						CloseHandle(hSnap);
+						return true; // Found
 					}
 				}
-			}
-			CloseHandle(hProc);
+			} while (Process32NextW(hSnap, &pe32));
 		}
-		return false;
+		CloseHandle(hSnap);
+		return false; // Game isnt running
 	}
 };
 void SaveConfig();
