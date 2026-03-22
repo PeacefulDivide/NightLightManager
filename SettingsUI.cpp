@@ -1,3 +1,5 @@
+// SettingsUI.cpp
+
 #include "NightLightManager.h"
 #include "resource.h"
 #include <commdlg.h> 
@@ -19,7 +21,14 @@ bool IsAutoStartEnabled();
 
 INT_PTR CALLBACK SettingsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
+
 	case WM_INITDIALOG: {
+
+		// Load Icon
+		HICON hMainIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON2));
+
+		SendMessage(hDlg, WM_SETICON, ICON_BIG, (LPARAM)hMainIcon);
+		SendMessage(hDlg, WM_SETICON, ICON_SMALL, (LPARAM)hMainIcon);
 
 		// Set checkbox state in registry
 		CheckDlgButton(hDlg, IDC_CHK_STARTUP, IsAutoStartEnabled() ? BST_CHECKED : BST_UNCHECKED);
@@ -32,7 +41,7 @@ INT_PTR CALLBACK SettingsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 
 		// Initialize Slider
 		SendDlgItemMessage(hDlg, IDC_RED_SLIDER, TBM_SETRANGE, TRUE, MAKELONG(0, 1000));
-		SendDlgItemMessage(hDlg, IDC_RED_SLIDER, TBM_SETPOS, TRUE, (LPARAM)(g_RedIntensity * 100));
+		SendDlgItemMessage(hDlg, IDC_RED_SLIDER, TBM_SETPOS, TRUE, (LPARAM)(g_RedIntensity * 1000));
 
 		return (INT_PTR)TRUE;
 	}
@@ -40,7 +49,7 @@ INT_PTR CALLBACK SettingsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 	case WM_HSCROLL: {
 		if ((HWND)lParam == GetDlgItem(hDlg, IDC_RED_SLIDER)) {
 			int pos = (int)SendMessage((HWND)lParam, TBM_GETPOS, 0, 0);
-			g_RedIntensity = (float)pos / 3000.0f;
+			g_RedIntensity = (float)pos / 2000.0f;
 
 			// Live preview
 			if (!isGamingMode) {
@@ -77,6 +86,7 @@ INT_PTR CALLBACK SettingsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 			}
 			break;
 		}
+
 		case IDC_BTN_ADD: {
 			wchar_t buffer[256];
 			GetDlgItemText(hDlg, IDC_GAME_INPUT, buffer, 256);
@@ -127,10 +137,17 @@ INT_PTR CALLBACK SettingsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 			break;
 		}
 		
+		// Okay button
 		case IDOK:
-		case IDCANCEL:
 			SaveConfig();
 			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		
+			// Cancel button
+		case IDCANCEL:
+			LoadConfig();
+			NightLightManager::SetState(true, g_RedIntensity);
+			EndDialog(hDlg, IDCANCEL);
 			return (INT_PTR)TRUE;
 		}
 		break;

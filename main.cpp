@@ -1,3 +1,5 @@
+// main.cpp
+
 #pragma comment(linker, "/SUBSYSTEM:windows")
 #include "NightLightManager.h"
 #include <shellapi.h>
@@ -54,6 +56,21 @@ void LoadConfig() {
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
+
+	case WM_POWERBROADCAST:
+		if (wParam == PBT_APMRESUMESUSPEND) {
+			// When windows wakes up
+			// Re apply last known gamma settings
+			NightLightManager::SetState(true, g_RedIntensity);
+			OutputDebugStringW(L"System resumed from sleep: Applying Tint.\n");
+		}
+		break;
+
+	case WM_DISPLAYCHANGE:
+		// Re apply tint if resolution changes
+		NightLightManager::SetState(true, g_RedIntensity);
+		break;
+
 	case WM_TRAYICON:
 		if (lParam == WM_RBUTTONUP) {
 			POINT curPoint;
@@ -85,6 +102,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
+	// Working Directory
+	wchar_t path[MAX_PATH];
+	GetModuleFileNameW(NULL, path, MAX_PATH);
+	// Remove the filename to get just the directory
+	for (int i = wcslen(path) - 1; i >= 0; i--) {
+		if (path[i] == L'\\') {
+			path[i] = L'\0';
+			break;
+		}
+	}
+	SetCurrentDirectoryW(path);
+	
+	SetProcessDPIAware();
+
 	// Load data first
 	LoadConfig();
 	
@@ -93,6 +124,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	wc.lpfnWndProc = WndProc;
 	wc.hInstance = hInstance;
 	wc.lpszClassName = L"NightLightWatcher";
+	wc.hIcon = (HICON)LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON2), IMAGE_ICON, 32, 32, LR_DEFAULTCOLOR);
 	RegisterClass(&wc);
 	HWND hWnd = CreateWindow(L"NightLightWatcher", NULL, 0, 0, 0, 0, 0, NULL, NULL, hInstance, NULL);
 
@@ -102,7 +134,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	nid.hWnd = hWnd;
 	nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE;
 	nid.uCallbackMessage = WM_TRAYICON;
-	nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	nid.hIcon = (HICON)LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON2), IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
 	lstrcpy(nid.szTip, L"Night Light Game Watcher");
 	Shell_NotifyIcon(NIM_ADD, &nid);
 
@@ -116,8 +148,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	NightLightManager::SetState(true, g_RedIntensity);
 
 	while (true) {
-		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-			if (msg.message == WM_QUIT) break;
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+			if (msg.message == WM_QUIT) return 0;
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}

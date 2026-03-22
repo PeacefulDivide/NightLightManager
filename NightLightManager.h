@@ -1,3 +1,5 @@
+// NightLightManager.h
+
 #pragma once
 #include <Windows.h>
 #include <vector>
@@ -19,31 +21,42 @@ public:
 
 		WORD ramp[3][256];
 
-		for (int i = 0; i < 256; i++) {
+		float intensity = (redIntensity < 0.0f) ? 0.0f : (redIntensity > 1.0f) ? 1.0f : redIntensity;
 
-			double baseValue = (double)((i << 8) | i);
+		float aggressiveIntensity = redIntensity;
+		float bMult = 1.0f - aggressiveIntensity;
+		float gMult = 1.0f - (aggressiveIntensity * 0.95f);
+
+		for (int i = 0; i < 256; i++) {
+			// Baseline 0-65535
+			double baseValue = (double)(i * 257);
 
 			if (!active) {
-				// Gaming mode no tint
+				ramp[0][i] = ramp[1][i] = ramp[2][i] = (WORD)baseValue;
+			} else {
+				
 				ramp[0][i] = (WORD)baseValue;
-				ramp[1][i] = (WORD)baseValue;
-				ramp[2][i] = (WORD)baseValue;
-			}
-			else {
-				// Night mode tinted
-				// 0.0 = no tint
-				// 1.0 = pure red
 
-				float gMult = 1.0f - redIntensity;
-				float bMult = (1.0f - redIntensity) * 0.8f;
-
-				ramp[0][i] = (WORD)baseValue;
+				// Force green and blue to stay within range
 				ramp[1][i] = (WORD)(baseValue * (double)gMult);
 				ramp[2][i] = (WORD)(baseValue * (double)bMult);
+
+				if (i > 0) {
+
+					if (ramp[1][i] < ramp[1][i - 1]) ramp[1][i] = ramp[1][i - 1];
+					if (ramp[2][i] < ramp[2][i - 1]) ramp[2][i] = ramp[2][i - 1];
+					
+				}
 			}
 		}
 
         // Apply the new color profile to the GPU
+		ramp[0][0] = ramp[1][0] = ramp[2][0] = 0;
+		
+		if (!active) {
+			ramp[0][255] = ramp[1][255] = ramp[2][255] = 65535;
+		}
+
         if (!SetDeviceGammaRamp(hdc, ramp)) {
             DWORD err = GetLastError();
             wchar_t buf[256];
