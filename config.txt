@@ -1,3 +1,0 @@
-0
-Notepad.exe
-LosslessScaling.exe
