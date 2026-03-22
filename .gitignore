@@ -8,7 +8,6 @@ x64/
 *.pdb
 *.opendb
 *.VC.db
-screenshots/
 config.txt
 
 # Build artifacts
