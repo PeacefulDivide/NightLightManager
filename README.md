@@ -11,8 +11,6 @@ Night Light Manager is a lightweight Windows application built in C++ that manag
   <em>The primary configuration interface (Left) and system tray integration (Right).</em>
   </p>
 
-*Figure 1: The core configuration interface featuring the intensity slider and exclusion list.*
-
 ## The Problem
 Many gamers and creative professionals use the Windows "Night Light" feature to reduce eye strain. However, it can distort colors in games or creative apps. Manually toggling it everytime I want to play a game is a hassle.
 
@@ -50,4 +48,4 @@ Many gamers and creative professionals use the Windows "Night Light" feature to 
 - **Utils.cpp:** Registry and system-level helper functions for persistence.
 
 ## License
-Distributed under the MIT License. See LICENSE for more information.
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for more information.
