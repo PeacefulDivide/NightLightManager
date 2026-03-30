@@ -9,6 +9,7 @@ x64/
 *.opendb
 *.VC.db
 config.txt
+/packages/
 
 # Build artifacts
 *.obj

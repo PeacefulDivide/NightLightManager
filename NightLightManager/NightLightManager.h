@@ -13,14 +13,8 @@
 // Class for changing Gamma
 class NightLightManager {
 public:
-	
-	static void SetState(bool active, float redIntensity = 0.5f) {
-		// Get the Device Context for the primary monitor
-		HDC hdc = GetDC(NULL);
-		if (!hdc) return;
-
-		WORD ramp[3][256];
-
+	// Calculations
+	static void CalculateRamp(bool active, float redIntensity, WORD ramp[3][256]) {
 		float intensity = (redIntensity < 0.0f) ? 0.0f : (redIntensity > 1.0f) ? 1.0f : redIntensity;
 
 		float aggressiveIntensity = redIntensity;
@@ -33,8 +27,9 @@ public:
 
 			if (!active) {
 				ramp[0][i] = ramp[1][i] = ramp[2][i] = (WORD)baseValue;
-			} else {
-				
+			}
+			else {
+
 				ramp[0][i] = (WORD)baseValue;
 
 				// Force green and blue to stay within range
@@ -45,17 +40,27 @@ public:
 
 					if (ramp[1][i] < ramp[1][i - 1]) ramp[1][i] = ramp[1][i - 1];
 					if (ramp[2][i] < ramp[2][i - 1]) ramp[2][i] = ramp[2][i - 1];
-					
+
 				}
 			}
 		}
 
-        // Apply the new color profile to the GPU
+		// Apply the new color profile to the GPU
 		ramp[0][0] = ramp[1][0] = ramp[2][0] = 0;
-		
+
 		if (!active) {
 			ramp[0][255] = ramp[1][255] = ramp[2][255] = 65535;
 		}
+	}
+	
+	static void SetState(bool active, float redIntensity = 0.5f) {
+		// Get the Device Context for the primary monitor
+		HDC hdc = GetDC(NULL);
+		if (!hdc) return;
+
+		WORD ramp[3][256];
+
+		CalculateRamp(active, redIntensity, ramp);
 
         if (!SetDeviceGammaRamp(hdc, ramp)) {
             DWORD err = GetLastError();
@@ -96,7 +101,7 @@ public:
 		return false; // Game isnt running
 	}
 };
-void SaveConfig();
-void LoadConfig();
+void SaveConfig(const std::wstring& filename = L"config.txt");
+void LoadConfig(const std::wstring& filename = L"config.txt");
 void SetAutoStart(bool enable);
 bool IsAutoStartEnabled();

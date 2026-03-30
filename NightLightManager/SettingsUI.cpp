@@ -15,7 +15,7 @@ extern bool isGamingMode;
 extern float g_RedIntensity;
 
 // Declarations for helper functions
-void SaveConfig();
+//void SaveConfig();
 void SetAutoStart(bool enable);
 bool IsAutoStartEnabled();
 

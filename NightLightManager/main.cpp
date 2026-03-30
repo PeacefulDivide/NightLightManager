@@ -23,8 +23,8 @@ float g_RedIntensity = 0.5f;
 INT_PTR CALLBACK SettingsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 
 // Basic save function
-void SaveConfig() {
-	std::wofstream file("config.txt");
+void SaveConfig(const std::wstring& filename) {
+	std::wofstream file(filename);
 	if (file.is_open()) {
 		file << g_RedIntensity << std::endl; // Save slider value
 		for (const auto& g : excludedGames) file << g << std::endl;
@@ -32,8 +32,8 @@ void SaveConfig() {
 }
 
 // Basic load function
-void LoadConfig() {
-	std::wifstream file("config.txt");
+void LoadConfig(const std::wstring& filename) {
+	std::wifstream file(filename);
 	if (file.is_open()) {
 		excludedGames.clear();
 		std::wstring line;
@@ -76,9 +76,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			POINT curPoint;
 			GetCursorPos(&curPoint);
 			HMENU hMenu = CreatePopupMenu();
-			AppendMenu(hMenu, MF_STRING, ID_TRAY_SETTINGS, L"Settings (Edit List)");
-			AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
-			AppendMenu(hMenu, MF_STRING, ID_TRAY_EXIT, L"Exit");
+			AppendMenuW(hMenu, MF_STRING, ID_TRAY_SETTINGS, L"Settings (Edit List)");
+			AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+			AppendMenuW(hMenu, MF_STRING, ID_TRAY_EXIT, L"Exit");
 			SetForegroundWindow(hWnd);
 			TrackPopupMenu(hMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, curPoint.x, curPoint.y, 0, hWnd, NULL);
 			DestroyMenu(hMenu);
@@ -100,7 +100,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	}
 	return 0;
 }
-
+#ifndef UNIT_TESTING
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
 	// Working Directory
 	wchar_t path[MAX_PATH];
@@ -178,3 +178,4 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	Shell_NotifyIcon(NIM_DELETE, &nid);
 	return 0;
 }
+#endif
