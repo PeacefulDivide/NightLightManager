@@ -48,4 +48,4 @@ Many gamers and creative professionals use the Windows "Night Light" feature to 
 - **Utils.cpp:** Registry and system-level helper functions for persistence.
 
 ## License
-Distributed under the **MIT License**. See [LICENSE](LICENSE) for more information.
+Distributed under the **GPLv3 License**. See [LICENSE](LICENSE) for more information.
