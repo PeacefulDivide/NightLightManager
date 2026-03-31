@@ -17,9 +17,8 @@ public:
 	static void CalculateRamp(bool active, float redIntensity, WORD ramp[3][256]) {
 		float intensity = (redIntensity < 0.0f) ? 0.0f : (redIntensity > 1.0f) ? 1.0f : redIntensity;
 
-		float aggressiveIntensity = redIntensity;
-		float bMult = 1.0f - aggressiveIntensity;
-		float gMult = 1.0f - (aggressiveIntensity * 0.95f);
+		float bMult = 1.0f - intensity * 0.9f;
+		float gMult = 1.0f - intensity * 0.5f;
 
 		for (int i = 0; i < 256; i++) {
 			// Baseline 0-65535
