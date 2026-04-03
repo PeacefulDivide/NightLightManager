@@ -106,7 +106,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	wchar_t path[MAX_PATH];
 	GetModuleFileNameW(NULL, path, MAX_PATH);
 	// Remove the filename to get just the directory
-	for (int i = wcslen(path) - 1; i >= 0; i--) {
+	for (size_t i = wcslen(path) - 1; i > 0; i--) {
 		if (path[i] == L'\\') {
 			path[i] = L'\0';
 			break;
@@ -118,6 +118,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	// Load data first
 	LoadConfig();
+
+	// Check if the app should start silently
+	// lpCmdLine contains everything after exe path
+	std::string arg(lpCmdLine);
+	bool silentMode = (arg.find("--silent") != std::string::npos);
 	
 	// Hidden window for messaging
 	WNDCLASS wc = { 0 };
@@ -138,8 +143,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	lstrcpy(nid.szTip, L"Night Light Game Watcher");
 	Shell_NotifyIcon(NIM_ADD, &nid);
 
-	// Launch settings UI on startup
-	DialogBox(hInstance, MAKEINTRESOURCE(IDD_MAIN_DIALOG), hWnd, SettingsDialogProc);
+	// Only Lauch settings UI on intial setup
+	if (!silentMode) {
+		DialogBox(hInstance, MAKEINTRESOURCE(IDD_MAIN_DIALOG), hWnd, SettingsDialogProc);
+	}
 
 	// Background loop
 	MSG msg;

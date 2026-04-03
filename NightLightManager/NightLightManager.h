@@ -51,27 +51,42 @@ public:
 			ramp[0][255] = ramp[1][255] = ramp[2][255] = 65535;
 		}
 	}
-	
+	// Apply filter to all monitors
+	static BOOL CALLBACK ApplyToAllMonitors(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
+		// dwData passes ramp table
+		WORD(*ramp)[256] = (WORD(*)[256])dwData;
+
+		MONITORINFOEX mi;
+		mi.cbSize = sizeof(mi);
+		if (GetMonitorInfo(hMonitor, &mi)) {
+			// Create DC for each monitor
+			HDC hdc = CreateDC(mi.szDevice, NULL, NULL, NULL);
+			if (hdc) {
+				if (!SetDeviceGammaRamp(hdc, ramp)) {
+					DWORD error = GetLastError();
+					wchar_t errBuf[256];
+					swprintf_s(errBuf, L"NLM: Gamma failed on %Ts. Error code: %lu\n", mi.szDevice, error);
+					OutputDebugStringW(errBuf);
+				}
+				DeleteDC(hdc);
+
+			}
+			else {
+				OutputDebugStringW(L"NLM: Failed to create DC for monitor.\n");
+			}
+		}
+		// Continue to next monitor
+		return TRUE; 
+	}
 	static void SetState(bool active, float redIntensity = 0.5f) {
-		// Get the Device Context for the primary monitor
-		HDC hdc = GetDC(NULL);
-		if (!hdc) return;
-
+		// Set gamma state
 		WORD ramp[3][256];
-
 		CalculateRamp(active, redIntensity, ramp);
 
-        if (!SetDeviceGammaRamp(hdc, ramp)) {
-            DWORD err = GetLastError();
-            wchar_t buf[256];
-            swprintf_s(buf, L"NLM: Gamma Failed. Error Code: %lu\n", err);
-            OutputDebugStringW(buf);
+        if (!EnumDisplayMonitors(NULL, NULL, ApplyToAllMonitors, (LPARAM)ramp)) {
+			OutputDebugStringW(L"NLM: Monitor Enumeration Failed.\n");
+     
         }
-        else {
-            OutputDebugStringW(active ? L"NLM: Gamma Warmth Applied!\n" : L"NLM: Gamma Reset.\n");
-        }
-
-        ReleaseDC(NULL, hdc);
     }
 
 	// Check if current window is in exclusion list
